@@ -1,0 +1,232 @@
+networks:
+  cherry_default:
+    external: true
+    name: "cherry_default"
+
+services:
+
+  # ==================== IMMICH ====================
+  immich-postgres:
+    image: tensorchord/pgvecto-rs:pg14-v0.2.0
+    container_name: immich-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=immich
+      - POSTGRES_USER=immich
+      - POSTGRES_PASSWORD=changeme
+    volumes:
+      - cherry_immich_postgres_data:/var/lib/postgresql/data
+    networks:
+      - cherry_default
+
+  immich-redis:
+    image: redis:6.2-alpine
+    container_name: immich-redis
+    restart: unless-stopped
+    networks:
+      - cherry_default
+
+  immich-server:
+    image: ghcr.io/immich-app/immich-server:release
+    container_name: immich-server
+    restart: unless-stopped
+    environment:
+      - DB_PASSWORD=changeme
+      - DB_DATABASE_NAME=immich
+      - REDIS_HOSTNAME=immich-redis
+      - DB_HOSTNAME=immich-postgres
+      - DB_USERNAME=immich
+    ports:
+      - "2283:2283"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /home/user/cherry/immich-library:/usr/src/app/upload
+    depends_on:
+      - immich-postgres
+      - immich-redis
+    networks:
+      - cherry_default
+
+  # ==================== MONITORING ====================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    volumes:
+      - /home/user/cherry/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    ports:
+      - "9090:9090"
+    networks:
+      - cherry_default
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - cherry_default
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    restart: unless-stopped
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    ports:
+      - "8080:8080"
+    networks:
+      - cherry_default
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+    ports:
+      - "9100:9100"
+    networks:
+      - cherry_default
+
+  # ==================== ZABBIX ====================
+  zabbix-db:
+    image: postgres:15
+    container_name: zabbix-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=zabbix
+      - POSTGRES_USER=zabbix
+      - POSTGRES_PASSWORD=changeme
+    volumes:
+      - zabbix_db_data:/var/lib/postgresql/data
+    networks:
+      - cherry_default
+
+  zabbix-server:
+    image: zabbix/zabbix-server-pgsql:latest
+    container_name: zabbix-server
+    restart: unless-stopped
+    environment:
+      - DB_SERVER_HOST=zabbix-db
+      - POSTGRES_DB=zabbix
+      - POSTGRES_USER=zabbix
+      - POSTGRES_PASSWORD=changeme
+    depends_on:
+      - zabbix-db
+    networks:
+      - cherry_default
+
+  zabbix-web:
+    image: zabbix/zabbix-web-nginx-pgsql:latest
+    container_name: zabbix-web
+    restart: unless-stopped
+    environment:
+      - DB_SERVER_HOST=zabbix-db
+      - POSTGRES_DB=zabbix
+      - POSTGRES_USER=zabbix
+      - POSTGRES_PASSWORD=changeme
+      - ZBX_SERVER_HOST=zabbix-server
+      - PHP_TZ=Europe/Skopje
+    ports:
+      - "8090:8080"
+    depends_on:
+      - zabbix-server
+    networks:
+      - cherry_default
+
+  zabbix-agent:
+    image: zabbix/zabbix-agent2:latest
+    container_name: zabbix-agent
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - ZBX_HOSTNAME=Asus-Cherry
+      - ZBX_SERVER_HOST=zabbix-server
+
+  # ==================== INFRASTRUCTURE ====================
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - cherry_portainer_data:/data
+    ports:
+      - "9000:9000"
+      - "9443:9443"
+    networks:
+      - cherry_default
+
+  portainer_agent:
+    image: portainer/agent:latest
+    container_name: portainer_agent
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "9001:9001"
+    networks:
+      - cherry_default
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:latest
+    container_name: uptime-kuma
+    restart: unless-stopped
+    volumes:
+      - cherry_uptime_kuma_data:/app/data
+    ports:
+      - "3001:3001"
+    networks:
+      - cherry_default
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --url http://immich-server:2283
+    networks:
+      - cherry_default
+
+  # ==================== GAMING ====================
+  minecraft:
+    image: itzg/minecraft-server:latest
+    container_name: minecraft
+    restart: unless-stopped
+    environment:
+      - EULA=TRUE
+      - VERSION=LATEST
+      - MEMORY=1G
+    ports:
+      - "25565:25565"
+    volumes:
+      - minecraft_data:/data
+    networks:
+      - cherry_default
+
+volumes:
+  cherry_immich_postgres_data:
+    external: true
+  cherry_portainer_data:
+    external: true
+  cherry_uptime_kuma_data:
+    external: true
+  grafana_data:
+  prometheus_data:
+  zabbix_db_data:
+  minecraft_data:
