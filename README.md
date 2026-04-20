@@ -13,7 +13,7 @@ A self-hosted homelab running across multiple machines, built from scratch as a 
 Internet (Fiber - Makedonski Telekom)
 │
 ▼
-Tenda N300 Router (192.168.1.1)
+Tenda N300 Router
 │
 ▼
 Mercusys 1Gbps Switch
