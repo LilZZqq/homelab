@@ -95,6 +95,6 @@ The most complex project — a full enterprise topology with 3 buildings each ha
 
 ## Tools Used
 - Cisco Packet Tracer 8.x
-- Cisco 2811, 2901, 2911 Routers
+- Cisco 2901, 2911 Routers
 - Cisco 2960, 3560 Switches
 - Cisco 7960 IP Phones
