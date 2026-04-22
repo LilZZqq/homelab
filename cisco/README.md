@@ -7,7 +7,7 @@ A collection of network design and simulation projects built using Cisco Packet 
 ## 01 — Static LAN Configuration
 **File:** `01-static-lan-configuration.pkt`
 
-A basic LAN setup with a Cisco 2811 router connected to a 2960 switch with 4 PCs. All devices configured with static IP addresses. Demonstrates fundamental network connectivity and router/switch configuration.
+A basic LAN setup with a Cisco 2911 router connected to a 2960 switch with 4 PCs. All devices configured with static IP addresses. Demonstrates fundamental network connectivity and router/switch configuration.
 
 **Concepts covered:**
 - Static IP addressing
